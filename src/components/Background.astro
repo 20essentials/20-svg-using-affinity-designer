@@ -1,0 +1,297 @@
+<main class='am-background'></main>
+
+<svg>
+  <defs>
+    <filter id='fancy-goo'>
+      <feGaussianBlur in='SourceGraphic' stdDeviation='10' result='blur'
+      ></feGaussianBlur>
+      <feColorMatrix
+        in='blur'
+        type='matrix'
+        values='1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 19 -9'
+        result='goo'></feColorMatrix>
+      <feComposite in='SourceGraphic' in2='goo' operator='atop'></feComposite>
+    </filter>
+  </defs>
+</svg>
+
+<script>
+  //@ts-nocheck
+  import gsap from 'gsap';
+  import { SVG } from '@svgdotjs/svg.js';
+  import '@svgdotjs/svg.filter.js';
+
+  let count = 0;
+  const SIZE = 100;
+  const SPLAT_SOUND = new Audio(
+    'https://cdn.freesound.org/previews/445/445117_9159316-lq.mp3'
+  );
+
+  const filterOp = add => {
+    add.gaussianBlur(10);
+    const matrix = add
+      .colorMatrix(
+        'matrix',
+        [1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 25, -10]
+      )
+      .in(blur);
+    add.composite(matrix).attr({
+      operator: 'atop'
+    });
+  };
+
+  const generateSplat = ({ x, y }) => {
+    count++;
+    const splat = SVG();
+    const COUNT = gsap.utils.random(2, 10);
+    splat.viewbox(`0 0 ${SIZE} ${SIZE}`);
+    const splats = splat.group();
+    const circles = [];
+    const groups = [];
+    const color = `hsl(${count < 5 ? 299 : gsap.utils.random(0, 359)} 100% 69%)`;
+
+    for (let i = 0; i < COUNT; i++) {
+      const circle = splat.circle(SIZE);
+      circle.fill(color);
+      circle.stroke({
+        color: 'hsl(0 0% 0%)',
+        width: 2
+      });
+      const group = splat.group();
+      group.add(circle);
+      splats.add(group);
+      groups.push(group.node);
+      circles.push(circle.node);
+    }
+
+    splats.filterWith(filterOp);
+    splat.addTo('body');
+
+    gsap.set(splat.node, {
+      '--x': x,
+      '--y': y
+    });
+
+    gsap.set(groups, {
+      transformOrigin: '50% 50%',
+      rotate: () => gsap.utils.random(0, 359)
+    });
+
+    gsap.set(circles, {
+      transformOrigin: '50% 100%',
+      yPercent: () => gsap.utils.random(-100, 100),
+      scale: () => gsap.utils.random(0.5, 1.5)
+    });
+
+    gsap.fromTo(
+      circles,
+      {
+        scale: () => gsap.utils.random(0, 0.25),
+        yPercent: 0
+      },
+      {
+        onStart: () => {
+          SPLAT_SOUND.currentTime = 0;
+          SPLAT_SOUND.play();
+        },
+        duration: () => gsap.utils.random(0.1, 0.5),
+        yPercent: () => gsap.utils.random(-100, 100),
+        scale: () => gsap.utils.random(0.5, 1.5)
+      }
+    );
+  };
+
+  document.body.addEventListener('click', generateSplat);
+</script>
+
+<script>
+  //@ts-nocheck
+  // Configuración (ajusta según necesites)
+  const CONFIG = {
+    selector: '.am-background', // selector del elemento objetivo
+    intervalMs: 500, // tiempo entre clics (ms)
+    maxClicks: 50, // número máximo de clics (Infinity = indefinido)
+    jitterPx: 0, // añade +- jitter aleatorio (px) a la posición
+    simulatePointerEvents: true // intenta despachar pointer events además de mouse events
+  };
+
+  (function randomClicksInElement(cfg = CONFIG) {
+    let intervalId = null;
+    let clicksDone = 0;
+
+    function randBetween(min, max) {
+      return Math.random() * (max - min) + min;
+    }
+
+    function makeMouseEvent(type, x, y) {
+      return new MouseEvent(type, {
+        view: window,
+        bubbles: true,
+        cancelable: true,
+        clientX: Math.round(x),
+        clientY: Math.round(y)
+        // puedes añadir más propiedades si lo necesitas
+      });
+    }
+
+    function makePointerEvent(type, x, y) {
+      try {
+        return new PointerEvent(type, {
+          pointerId: 1,
+          bubbles: true,
+          cancelable: true,
+          clientX: Math.round(x),
+          clientY: Math.round(y),
+          pointerType: 'mouse',
+          isPrimary: true
+        });
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function dispatchClickAt(x, y) {
+      // Obtiene el elemento real bajo las coordenadas
+      const target = document.elementFromPoint(x, y) || document.body;
+
+      // Opcional: despachar pointer events primero para compatibilidad
+      if (cfg.simulatePointerEvents) {
+        const peDown = makePointerEvent('pointerdown', x, y);
+        const peUp = makePointerEvent('pointerup', x, y);
+        if (peDown) target.dispatchEvent(peDown);
+        if (peUp) target.dispatchEvent(peUp);
+      }
+
+      // Mouse down / up / click
+      target.dispatchEvent(makeMouseEvent('mousedown', x, y));
+      target.dispatchEvent(makeMouseEvent('mouseup', x, y));
+      target.dispatchEvent(makeMouseEvent('click', x, y));
+    }
+
+    function oneRandomClickInside(el) {
+      const rect = el.getBoundingClientRect();
+
+      // Si elemento no visible o sin tamaño, ignora
+      if (rect.width <= 0 || rect.height <= 0) return false;
+
+      // posición aleatoria dentro del rect
+      let rx = randBetween(0, rect.width);
+      let ry = randBetween(0, rect.height);
+
+      // jitter opcional
+      if (cfg.jitterPx) {
+        rx += randBetween(-cfg.jitterPx, cfg.jitterPx);
+        ry += randBetween(-cfg.jitterPx, cfg.jitterPx);
+        rx = Math.max(0, Math.min(rect.width, rx));
+        ry = Math.max(0, Math.min(rect.height, ry));
+      }
+
+      const clientX = rect.left + rx;
+      const clientY = rect.top + ry;
+
+      dispatchClickAt(clientX, clientY);
+      clicksDone += 1;
+      return true;
+    }
+
+    function startOnElement(el) {
+      if (intervalId) return; // ya en marcha
+
+      intervalId = setInterval(() => {
+        if (clicksDone >= cfg.maxClicks) {
+          stop();
+          return;
+        }
+        // Recalcula cada intervalo en caso de que el elemento cambie de tamaño/posición
+        const ok = oneRandomClickInside(el);
+        if (!ok) {
+          // si no pudo (ej: ancho 0), no aumentamos clicksDone; se puede loggear si quieres
+        }
+      }, cfg.intervalMs);
+    }
+
+    function stop() {
+      if (intervalId) {
+        clearInterval(intervalId);
+        intervalId = null;
+      }
+    }
+
+    function tryFindAndStart() {
+      const el = document.querySelector(cfg.selector);
+      if (el) {
+        startOnElement(el);
+        return true;
+      }
+      return false;
+    }
+
+    // If element not in DOM at load, observe mutations to detect it
+    function waitForElementAndStart() {
+      if (tryFindAndStart()) return;
+
+      const mo = new MutationObserver(() => {
+        if (tryFindAndStart()) {
+          mo.disconnect();
+        }
+      });
+
+      mo.observe(document.documentElement || document.body, {
+        childList: true,
+        subtree: true
+      });
+
+      // Safety: stop observing after 30s if not found
+      setTimeout(() => mo.disconnect(), 30_000);
+    }
+
+    // Arranca cuando el DOM esté listo
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', waitForElementAndStart, {
+        once: true
+      });
+    } else {
+      waitForElementAndStart();
+    }
+
+    // Exponer control simple desde consola si quieres
+    window.__randomClicks = {
+      start: () => {
+        const el = document.querySelector(cfg.selector);
+        if (!el) throw new Error('Elemento no encontrado');
+        startOnElement(el);
+      },
+      stop,
+      status: () => ({ clicksDone, running: !!intervalId })
+    };
+  })();
+
+  // Ejemplo: desde la consola puedes ejecutar:
+  // __randomClicks.stop()   -> para parar
+  // __randomClicks.status() -> ver estado
+</script>
+
+<style is:global>
+  body {
+    overflow-x: hidden;
+  }
+
+  .am-background {
+    height: 100vh;
+    width: 100%;
+    position: fixed;
+    background-color: black;
+    inset: 0;
+  }
+
+  svg {
+    width: 25vmin;
+    aspect-ratio: 1;
+    fill: hsl(299 100% 69%);
+    overflow: visible !important;
+    position: absolute;
+    top: calc(var(--y) * 1px);
+    left: calc(var(--x) * 1px);
+    translate: -50% -50%;
+  }
+</style>

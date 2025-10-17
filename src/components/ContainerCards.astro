@@ -1,0 +1,215 @@
+---
+import { baseUrl } from '@/utils/functions';
+
+const arrayCards = Array.from({ length: 10 }, (_, i) =>
+  baseUrl(`/assets/svg/${i + 1}.svg`)
+);
+---
+
+<style is:global>
+  .am-container-cards {
+    height: 100vh;
+    position: relative;
+  }
+
+  #carousel {
+    perspective: 65.1vmax;
+    overflow: hidden;
+    position: relative;
+    z-index: 5;
+    height: 100vh;
+    display: flex;
+    flex-wrap: wrap;
+    place-content: center;
+    place-items: center;
+
+    #scene {
+      width: 42%;
+      transform-style: preserve-3d;
+      transition: transform 0.5s;
+    }
+  }
+
+  .carousel_item {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0 2vmax 0 1vmax;
+    backface-visibility: hidden;
+    border: 0.1vmax solid black;
+    aspect-ratio: 1;
+    background-color: #fffa;
+  }
+
+  .carousel_item:not(:first-of-type) {
+    position: absolute;
+    left: 0;
+    top: 0;
+  }
+
+  #carousel_btn {
+    width: 100%;
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    padding: 1.3vmax;
+    display: flex;
+    left: 0;
+    justify-content: space-between;
+    z-index: 5;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+
+    @media (width <= 1111px) and (orientation: portrait) {
+      width: 25%;
+      top: 70%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+  }
+
+  .btn {
+    width: 2.93vmax;
+    height: 2.93vmax;
+    font-size: 0.91vmax;
+    color: #eee;
+    border: 0.2px solid #2f2f2f;
+    box-sizing: border-box;
+    border-radius: 50%;
+    color: #2f2f2f;
+    font-family: sans-serif;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: flex;
+    flex-wrap: wrap;
+    place-content: center;
+    text-align: center;
+    place-items: center;
+  }
+
+  .btn:hover {
+    color: #ffffff;
+    background-color: #2f2f2f;
+  }
+</style>
+
+<section class='am-container-cards'>
+  <div id='carousel' data-auto='true'>
+    <div id='scene'>
+      {
+        arrayCards.map(src => (
+          <img data-anchor={src} class='carousel_item' src={src} alt='svg' />
+        ))
+      }
+    </div>
+  </div>
+
+  <div id='carousel_btn'>
+    <div class='btn prev'>Prev</div>
+    <div class='btn next'>Next</div>
+  </div>
+</section>
+
+<script>
+  class Carousel3D {
+    private carousel: HTMLElement;
+    private scene: HTMLElement;
+    private items: HTMLElement[];
+    private buttonWrapper: HTMLElement;
+    private n: number;
+    private currIndex = 0;
+    private theta: number;
+    private intervalId: number | null = null;
+    private autoCarousel: boolean;
+
+    constructor(
+      carouselId = 'carousel',
+      sceneId = 'scene',
+      btnId = 'carousel_btn'
+    ) {
+      const carousel = document.getElementById(carouselId);
+      const scene = document.getElementById(sceneId);
+      const buttonWrapper = document.getElementById(btnId);
+      const items = Array.from(
+        document.querySelectorAll<HTMLElement>('.carousel_item')
+      );
+
+      if (!carousel || !scene || !buttonWrapper || items.length === 0) {
+        throw new Error('Carousel: missing required DOM elements');
+      }
+
+      this.carousel = carousel;
+      this.scene = scene;
+      this.items = items;
+      this.buttonWrapper = buttonWrapper;
+      this.n = items.length;
+      this.theta = (2 * Math.PI) / this.n;
+      this.autoCarousel = this.carousel.dataset.auto === 'true';
+
+      this.setupCarousel(this.getItemWidth());
+      this.setupNavigation();
+
+      window.addEventListener('resize', () => {
+        if (this.intervalId) clearInterval(this.intervalId);
+        this.setupCarousel(this.getItemWidth());
+      });
+    }
+
+    private getItemWidth(): number {
+      return parseFloat(getComputedStyle(this.items[0]).width);
+    }
+
+    private setupCarousel(width: number): void {
+      const apothem = width / (2 * Math.tan(Math.PI / this.n));
+      this.scene.style.transformOrigin = `50% 50% ${-apothem}px`;
+
+      this.items.forEach((item, i) => {
+        if (i === 0) return;
+        item.style.transformOrigin = `50% 50% ${-apothem}px`;
+        item.style.transform = `rotateY(${i * this.theta}rad)`;
+      });
+
+      if (this.autoCarousel) {
+        this.setCarouselInterval();
+      }
+    }
+
+    private setCarouselInterval(): void {
+      this.intervalId = window.setInterval(() => {
+        this.currIndex++;
+        this.rotateScene();
+      }, 4000);
+    }
+
+    private rotateScene(): void {
+      this.scene.style.transform = `rotateY(${this.currIndex * -this.theta}rad)`;
+    }
+
+    private setupNavigation(): void {
+      this.buttonWrapper.addEventListener('click', (e: MouseEvent) => {
+        e.stopPropagation();
+        const target = e.target as HTMLElement;
+
+        if (target.classList.contains('next')) {
+          this.currIndex++;
+        } else if (target.classList.contains('prev')) {
+          this.currIndex--;
+        }
+
+        if (this.intervalId) clearInterval(this.intervalId);
+        this.rotateScene();
+
+        if (this.autoCarousel) {
+          setTimeout(() => this.setCarouselInterval(), 3000);
+        }
+      });
+    }
+  }
+
+  window.addEventListener('load', () => {
+    try {
+      new Carousel3D();
+    } catch (err) {
+      console.error(err);
+    }
+  });
+</script>
