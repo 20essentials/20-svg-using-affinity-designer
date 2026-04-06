@@ -7,10 +7,8 @@ export default defineConfig({
     assets: 'static'
   },
 
-  //Localhost
-  // site: 'http://localhost:4321/'
-
-  //Deploy normal project
-  base: '/20-svg-using-affinity-designer/',
-  site: 'https://20essentials.github.io/20-svg-using-affinity-designer/'
+  base: import.meta.env.DEV ? undefined : '/20-svg-using-affinity-designer/',
+  site: import.meta.env.DEV
+    ? 'http://localhost:4321/'
+    : 'https://20essentials.github.io/20-svg-using-affinity-designer/'
 });
