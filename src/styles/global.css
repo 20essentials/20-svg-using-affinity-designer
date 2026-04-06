@@ -55,6 +55,11 @@ body {
   flex-direction: column;
 }
 
+body,
+html {
+  overflow-x: hidden;
+}
+
 /***************************SCROLL***************************/
 
 body::-webkit-scrollbar {
