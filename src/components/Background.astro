@@ -65,7 +65,7 @@
     }
 
     splats.filterWith(filterOp);
-    splat.addTo('body');
+    splat.addTo('.am-background');
 
     gsap.set(splat.node, {
       '--x': x,
@@ -278,7 +278,7 @@
     position: fixed;
     background-color: black;
     inset: 0;
-    overflow-x: hidden;
+    overflow: hidden;
   }
 
   svg {
