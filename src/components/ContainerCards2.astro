@@ -116,106 +116,126 @@ const arrayCards = Array.from({ length: 10 }, (_, i) =>
 </section>
 
 <script>
-  class Carousel3D {
-    private carousel: HTMLElement;
-    private scene: HTMLElement;
-    private items: HTMLElement[];
-    private buttonWrapper: HTMLElement;
-    private n: number;
-    private currIndex = 0;
-    private theta: number;
-    private intervalId: number | null = null;
-    private autoCarousel: boolean;
+ class Carousel3D {
+  private carousel: HTMLElement;
+  private scene: HTMLElement;
+  private items: HTMLElement[];
+  private buttonWrapper: HTMLElement;
+  private n: number;
+  private currIndex = 0;
+  private theta: number;
+  private intervalId: number | null = null;
+  private autoCarousel: boolean;
 
-    constructor(
-      carouselId = 'carousel2',
-      sceneId = 'scene2',
-      btnId = 'carousel_btn2'
-    ) {
-      const carousel = document.getElementById(carouselId);
-      const scene = document.getElementById(sceneId);
-      const buttonWrapper = document.getElementById(btnId);
-      const items = Array.from(
-        document.querySelectorAll<HTMLElement>('.carousel_item2')
-      );
+  constructor(
+    carouselId = 'carousel2',
+    sceneId = 'scene2',
+    btnId = 'carousel_btn2'
+  ) {
+    const carousel = document.getElementById(carouselId);
+    const scene = document.getElementById(sceneId);
+    const buttonWrapper = document.getElementById(btnId);
+    const items = Array.from(
+      document.querySelectorAll<HTMLElement>('.carousel_item2')
+    );
 
-      if (!carousel || !scene || !buttonWrapper || items.length === 0) {
-        throw new Error('Carousel: missing required DOM elements');
-      }
+    if (!carousel || !scene || !buttonWrapper || items.length === 0) {
+      throw new Error('Carousel: missing required DOM elements');
+    }
 
-      this.carousel = carousel;
-      this.scene = scene;
-      this.items = items;
-      this.buttonWrapper = buttonWrapper;
-      this.n = items.length;
-      this.theta = (2 * Math.PI) / this.n;
-      this.autoCarousel = this.carousel.dataset.auto === 'true';
+    this.carousel = carousel;
+    this.scene = scene;
+    this.items = items;
+    this.buttonWrapper = buttonWrapper;
+    this.n = items.length;
+    this.theta = (2 * Math.PI) / this.n;
+    this.autoCarousel = this.carousel.dataset.auto === 'true';
 
+    this.setupCarousel(this.getItemWidth());
+    this.setupNavigation();
+    this.setupHoverEvents();
+
+    window.addEventListener('resize', () => {
+      if (this.intervalId) clearInterval(this.intervalId);
       this.setupCarousel(this.getItemWidth());
-      this.setupNavigation();
+    });
+  }
 
-      window.addEventListener('resize', () => {
-        if (this.intervalId) clearInterval(this.intervalId);
-        this.setupCarousel(this.getItemWidth());
-      });
-    }
+  private getItemWidth(): number {
+    return parseFloat(getComputedStyle(this.items[0]).width);
+  }
 
-    private getItemWidth(): number {
-      return parseFloat(getComputedStyle(this.items[0]).width);
-    }
+  private setupCarousel(width: number): void {
+    const apothem = width / (2 * Math.tan(Math.PI / this.n));
+    this.scene.style.transformOrigin = `50% 50% ${-apothem}px`;
 
-    private setupCarousel(width: number): void {
-      const apothem = width / (2 * Math.tan(Math.PI / this.n));
-      this.scene.style.transformOrigin = `50% 50% ${-apothem}px`;
+    this.items.forEach((item, i) => {
+      if (i === 0) return;
+      item.style.transformOrigin = `50% 50% ${-apothem}px`;
+      item.style.transform = `rotateY(${i * this.theta}rad)`;
+    });
 
-      this.items.forEach((item, i) => {
-        if (i === 0) return;
-        item.style.transformOrigin = `50% 50% ${-apothem}px`;
-        item.style.transform = `rotateY(${i * this.theta}rad)`;
-      });
-
-      if (this.autoCarousel) {
-        this.setCarouselInterval();
-      }
-    }
-
-    private setCarouselInterval(): void {
-      this.intervalId = window.setInterval(() => {
-        this.currIndex++;
-        this.rotateScene();
-      }, 4000);
-    }
-
-    private rotateScene(): void {
-      this.scene.style.transform = `rotateY(${this.currIndex * -this.theta}rad)`;
-    }
-
-    private setupNavigation(): void {
-      this.buttonWrapper.addEventListener('click', (e: MouseEvent) => {
-        e.stopPropagation();
-        const target = e.target as HTMLElement;
-
-        if (target.classList.contains('next')) {
-          this.currIndex++;
-        } else if (target.classList.contains('prev')) {
-          this.currIndex--;
-        }
-
-        if (this.intervalId) clearInterval(this.intervalId);
-        this.rotateScene();
-
-        if (this.autoCarousel) {
-          setTimeout(() => this.setCarouselInterval(), 3000);
-        }
-      });
+    if (this.autoCarousel) {
+      this.setCarouselInterval();
     }
   }
 
-  window.addEventListener('load', () => {
-    try {
-      new Carousel3D();
-    } catch (err) {
-      console.error(err);
+  private setCarouselInterval(): void {
+    this.intervalId = window.setInterval(() => {
+      this.currIndex++;
+      this.rotateScene();
+    }, 4000);
+  }
+
+  private clearCarouselInterval(): void {
+    if (this.intervalId) {
+      clearInterval(this.intervalId);
+      this.intervalId = null;
     }
-  });
+  }
+
+  private rotateScene(): void {
+    this.scene.style.transform = `rotateY(${this.currIndex * -this.theta}rad)`;
+  }
+
+  private setupNavigation(): void {
+    this.buttonWrapper.addEventListener('click', (e: MouseEvent) => {
+      e.stopPropagation();
+      const target = e.target as HTMLElement;
+
+      if (target.classList.contains('next')) {
+        this.currIndex++;
+      } else if (target.classList.contains('prev')) {
+        this.currIndex--;
+      }
+
+      this.clearCarouselInterval();
+      this.rotateScene();
+
+      if (this.autoCarousel) {
+        setTimeout(() => this.setCarouselInterval(), 3000);
+      }
+    });
+  }
+
+  private setupHoverEvents(): void {
+    this.carousel.addEventListener('mouseenter', () => {
+      this.clearCarouselInterval();
+    });
+
+    this.carousel.addEventListener('mouseleave', () => {
+      if (this.autoCarousel) {
+        this.setCarouselInterval();
+      }
+    });
+  }
+}
+
+window.addEventListener('load', () => {
+  try {
+    new Carousel3D();
+  } catch (err) {
+    console.error(err);
+  }
+});
 </script>
